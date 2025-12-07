@@ -1,32 +1,28 @@
 # Employee Management GraphQL API
 
-A production-ready GraphQL API built with NestJS, TypeORM, and PostgreSQL for employee management with role-based authentication and performance optimizations.
+A GraphQL API built with NestJS, TypeORM, and MariaDB for employee management with role-based authentication.
 
 ## Features
 
-- **GraphQL API** with Apollo Server
-- **Role-Based Access Control** (Admin & Employee roles)
-- **JWT Authentication** with secure password hashing
-- **PostgreSQL Database** with TypeORM
-- **Advanced Filtering & Pagination** with sorting
-- **Performance Optimizations** including DataLoader, query complexity limits, and database indexing
-- **Comprehensive Testing** (Unit & E2E tests)
-- **Docker Support** for PostgreSQL
+- GraphQL API with Apollo Server
+- JWT Authentication with role-based access control
+- Employee CRUD operations
+- Advanced filtering, pagination, and sorting
+- Performance optimizations (DataLoader, query complexity limits, database indexing)
 
 ## Tech Stack
 
 - **Framework**: NestJS
 - **API**: GraphQL (Apollo Server)
-- **Database**: PostgreSQL
+- **Database**: MariaDB
 - **ORM**: TypeORM
 - **Authentication**: JWT (passport-jwt)
 - **Language**: TypeScript
-- **Testing**: Jest, Supertest
 
 ## Data Model
 
 ### Employee
-- ID (UUID)
+- ID (auto-increment integer)
 - Name (string)
 - Age (integer, 18-100)
 - Class (string)
@@ -35,7 +31,7 @@ A production-ready GraphQL API built with NestJS, TypeORM, and PostgreSQL for em
 - Timestamps (createdAt, updatedAt)
 
 ### User
-- ID (UUID)
+- ID (auto-increment integer)
 - Username (string, unique)
 - Password (hashed)
 - Role (ADMIN | EMPLOYEE)
@@ -46,7 +42,7 @@ A production-ready GraphQL API built with NestJS, TypeORM, and PostgreSQL for em
 ### Prerequisites
 
 - Node.js (v18 or higher)
-- Docker & Docker Compose (for PostgreSQL)
+- MariaDB database
 - npm or yarn
 
 ### Installation
@@ -54,7 +50,7 @@ A production-ready GraphQL API built with NestJS, TypeORM, and PostgreSQL for em
 1. **Clone the repository**
 
 ```bash
-git clone <repository-url>
+git clone https://github.com/KaushikEDS/ultraship-backend.git
 cd ultraship-backend
 ```
 
@@ -68,20 +64,14 @@ npm install
 
 ```bash
 cp .env.example .env
-# Edit .env with your configuration
+# Edit .env with your database credentials
 ```
 
-4. **Start PostgreSQL with Docker**
-
-```bash
-docker-compose up -d
-```
-
-5. **Run the application**
+4. **Run the application**
 
 ```bash
 # Development mode
-npm run start:dev
+npm run dev
 
 # Production mode
 npm run build
@@ -89,6 +79,17 @@ npm run start:prod
 ```
 
 The GraphQL Playground will be available at: `http://localhost:3000/graphql`
+
+5. **Seed the database** (optional)
+
+```bash
+npm run seed
+```
+
+This creates:
+- Admin user: `admin` / `admin123`
+- Employee user: `employee` / `employee123`
+- 5 sample employees
 
 ## Testing
 
@@ -101,33 +102,11 @@ npm run test:e2e
 
 # Test coverage
 npm run test:cov
-
-# Watch mode
-npm run test:watch
 ```
 
 ## GraphQL API Usage
 
 ### Authentication
-
-#### Register a new user
-
-```graphql
-mutation {
-  register(input: {
-    username: "admin"
-    password: "admin123"
-    role: ADMIN
-  }) {
-    accessToken
-    user {
-      id
-      username
-      role
-    }
-  }
-}
-```
 
 #### Login
 
@@ -147,14 +126,21 @@ mutation {
 }
 ```
 
-#### Get current user
+#### Register
 
 ```graphql
-query {
-  me {
-    id
-    username
-    role
+mutation {
+  register(input: {
+    username: "newuser"
+    password: "password123"
+    role: EMPLOYEE
+  }) {
+    accessToken
+    user {
+      id
+      username
+      role
+    }
   }
 }
 ```
@@ -166,23 +152,16 @@ Authorization: Bearer <your-jwt-token>
 
 ### Employee Queries
 
-#### Get all employees (with optional filters)
+#### Get all employees
 
 ```graphql
 query {
-  employees(filter: {
-    name: "John"
-    class: "10A"
-    minAge: 25
-    maxAge: 35
-    subject: "Math"
-  }) {
+  employees {
     id
     name
     age
     class
     subjects
-    attendance
   }
 }
 ```
@@ -191,15 +170,13 @@ query {
 
 ```graphql
 query {
-  employee(id: "uuid-here") {
+  employee(id: 1) {
     id
     name
     age
     class
     subjects
     attendance
-    createdAt
-    updatedAt
   }
 }
 ```
@@ -224,12 +201,30 @@ query {
       name
       age
       class
-      subjects
     }
     total
     hasMore
     currentPage
     totalPages
+  }
+}
+```
+
+#### Filter employees
+
+```graphql
+query {
+  employees(filter: {
+    name: "John"
+    class: "10A"
+    minAge: 25
+    maxAge: 35
+    subject: "Math"
+  }) {
+    id
+    name
+    age
+    class
   }
 }
 ```
@@ -244,17 +239,13 @@ mutation {
     name: "John Doe"
     age: 30
     class: "10A"
-    subjects: ["Math", "Physics", "Chemistry"]
-    attendance: {
-      "2024-01-01": true,
-      "2024-01-02": false
-    }
+    subjects: ["Math", "Physics"]
+    attendance: {}
   }) {
     id
     name
     age
     class
-    subjects
   }
 }
 ```
@@ -264,17 +255,15 @@ mutation {
 ```graphql
 mutation {
   updateEmployee(
-    id: "uuid-here"
+    id: 1
     input: {
       name: "Jane Doe"
       age: 31
-      class: "10B"
     }
   ) {
     id
     name
     age
-    class
   }
 }
 ```
@@ -283,7 +272,7 @@ mutation {
 
 ```graphql
 mutation {
-  deleteEmployee(id: "uuid-here") {
+  deleteEmployee(id: 1) {
     id
     name
   }
@@ -292,98 +281,34 @@ mutation {
 
 ## Access Control
 
-### Role-Based Permissions
-
 **Admin Role:**
-- Create employees
-- Update employees
-- Delete employees
+- Create, update, delete employees
 - View all employees
-- Access all queries
 
 **Employee Role:**
-- View all employees
-- Access read-only queries
+- View employees (read-only)
 - Cannot create, update, or delete
-
-## Performance Optimizations
-
-This API implements several performance optimizations:
-
-1. **Database Indexing**: Indexes on frequently queried fields (name, class, username)
-2. **Query Complexity Limiting**: Prevents malicious deep queries (max 1000 complexity)
-3. **DataLoader**: Batches and caches database queries to prevent N+1 problems
-4. **Pagination**: Limits result set size (max 100 items per page)
-5. **Connection Pooling**: Efficient database connection management
-6. **Bounded Cache**: Apollo Server caches parsed queries
-
-See [PERFORMANCE.md](PERFORMANCE.md) for detailed information.
-
-## Project Structure
-
-```
-src/
-├── auth/                  # Authentication module
-│   ├── dto/              # Input/Output types
-│   ├── entities/         # User entity
-│   ├── guards/           # JWT and Roles guards
-│   ├── strategies/       # Passport JWT strategy
-│   ├── auth.service.ts
-│   ├── auth.resolver.ts
-│   └── auth.module.ts
-├── employee/             # Employee module
-│   ├── dto/             # Input/Output types
-│   ├── entities/        # Employee entity
-│   ├── employee.service.ts
-│   ├── employee.resolver.ts
-│   └── employee.module.ts
-├── common/              # Shared utilities
-│   ├── decorators/      # Custom decorators
-│   ├── enums/          # Shared enums
-│   ├── plugins/        # GraphQL plugins
-│   └── dataloaders/    # DataLoader implementations
-├── config/             # Configuration files
-│   ├── database.config.ts
-│   └── graphql.config.ts
-├── app.module.ts       # Root module
-└── main.ts            # Application entry point
-```
 
 ## Environment Variables
 
-See `.env.example` for all available configuration options:
+Required environment variables:
 
-- `DB_HOST`: PostgreSQL host
-- `DB_PORT`: PostgreSQL port
-- `DB_USER`: Database username
-- `DB_PASSWORD`: Database password
-- `DB_NAME`: Database name
-- `JWT_SECRET`: Secret key for JWT signing
-- `JWT_EXPIRATION`: Token expiration time
-- `NODE_ENV`: Environment (development/production)
-- `PORT`: Application port
-- `GRAPHQL_PLAYGROUND`: Enable/disable GraphQL Playground
+- `DB_HOST` - MariaDB host
+- `DB_PORT` - MariaDB port (default: 3306)
+- `DB_USER` - Database username
+- `DB_PASSWORD` - Database password
+- `DB_NAME` - Database name
+- `DB_SSL` - Enable SSL (true/false)
+- `JWT_SECRET` - Secret key for JWT signing
+- `JWT_EXPIRATION` - Token expiration time
+- `NODE_ENV` - Environment (development/production)
+- `PORT` - Application port
+- `GRAPHQL_PLAYGROUND` - Enable GraphQL Playground
 
-## Docker Support
+## Deployment
 
-Start PostgreSQL with Docker Compose:
-
-```bash
-docker-compose up -d
-```
-
-Stop PostgreSQL:
-
-```bash
-docker-compose down
-```
-
-View logs:
-
-```bash
-docker-compose logs -f postgres
-```
+This project is configured for Vercel deployment. See `vercel.json` for configuration.
 
 ## License
 
-This project is [MIT licensed](LICENSE).
+MIT
